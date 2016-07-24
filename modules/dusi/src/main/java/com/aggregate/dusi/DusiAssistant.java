@@ -4,6 +4,7 @@ import com.aggregate.api.Request;
 import com.aggregate.api.Response;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -77,8 +78,17 @@ public class DusiAssistant extends AbstractVerticle {
     private void processReply(JsonObject json) {
         String uri = json.getString("response_uri");
         String text = json.getString("speech", json.getString("text"));
+        boolean isDusgateRequest = false;
         List<String> speeches = new ArrayList<>();
-        if (text != null) {
+        if (text.startsWith("dusgate_request")){
+            isDusgateRequest = true;
+            text = text.replace("dusgate_request(", "");
+            text = text.substring(0, text.length() - 1);
+            String[] params = text.split(", ");
+            if (params[0].equals("say")) vertx.eventBus().publish("asr.result", params[1]);
+            else vertx.eventBus().send(params[0], params[1].isEmpty() ? new JsonArray(params[1]) : "");
+        }
+        if (text != null && !isDusgateRequest) {
             speeches.addAll(Arrays.asList(text.split("\\|")));
         }
         boolean modal = json.getBoolean("modal", false);
